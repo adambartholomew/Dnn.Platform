@@ -444,10 +444,11 @@ namespace DotNetNuke.Entities.Modules
             return portalDesktopModuleID;
         }
 
-        public static int AddDesktopModuleToPortal(int portalId, int desktopModuleId, bool addPermissions, bool clearCache)
+        public static int AddDesktopModuleToPortal(int portalId, int desktopModuleId, bool addPermissions, bool clearCache,
+            Dictionary<int, PortalDesktopModuleInfo> portalDesktopModules = null)
         {
             int portalDesktopModuleID;
-            PortalDesktopModuleInfo portalDesktopModule = GetPortalDesktopModule(portalId, desktopModuleId);
+            PortalDesktopModuleInfo portalDesktopModule = GetPortalDesktopModule(portalId, desktopModuleId, portalDesktopModules);
             if (portalDesktopModule == null)
             {
                 portalDesktopModuleID = DataProvider.Instance().AddPortalDesktopModule(portalId, desktopModuleId, UserController.Instance.GetCurrentUserInfo().UserID);
@@ -484,9 +485,12 @@ namespace DotNetNuke.Entities.Modules
 
         public static void AddDesktopModuleToPortals(int desktopModuleId)
         {
+            Dictionary<int, PortalDesktopModuleInfo> portalDesktopModules =
+                GetPortalDesktopModulesByDesktopModuleID(desktopModuleId);
+
             foreach (PortalInfo portal in PortalController.Instance.GetPortals())
             {
-                AddDesktopModuleToPortal(portal.PortalID, desktopModuleId, true, false);
+                AddDesktopModuleToPortal(portal.PortalID, desktopModuleId, true, false, portalDesktopModules);
             }
             DataCache.ClearHostCache(true);
         }
@@ -512,9 +516,20 @@ namespace DotNetNuke.Entities.Modules
             DataCache.ClearPortalCache(portalId, true);
         }
 
-        public static PortalDesktopModuleInfo GetPortalDesktopModule(int portalId, int desktopModuleId)
+        public static PortalDesktopModuleInfo GetPortalDesktopModule(int portalId, int desktopModuleId,
+            Dictionary<int, PortalDesktopModuleInfo> portalDesktopModules = null)
         {
-            return CBO.FillObject<PortalDesktopModuleInfo>(DataProvider.Instance().GetPortalDesktopModules(portalId, desktopModuleId));
+            if (portalDesktopModules != null )
+            {
+                return portalDesktopModules
+                    .SingleOrDefault(m => m.Value.PortalID == portalId && m.Value.DesktopModuleID == desktopModuleId)
+                    .Value;
+            }
+            else
+            {
+                // fall back on the database call if a collection was not passed in
+                return CBO.FillObject<PortalDesktopModuleInfo>(DataProvider.Instance().GetPortalDesktopModules(portalId, desktopModuleId));
+            }
         }
 
         public static Dictionary<int, PortalDesktopModuleInfo> GetPortalDesktopModulesByDesktopModuleID(int desktopModuleId)
